@@ -1,128 +1,72 @@
-# OSV-T246 Project Implementation
+# xv6 Mini Kernel — OSV-T246
 
-## Project Summary
+An extended [xv6](https://pdos.csail.mit.edu/6.828/) kernel built as Project-Based Learning (PBL) coursework: an **MLFQ scheduling framework**, new system calls, a deadlock-detection framework, and user-space diagnostics.
 
-This project implements 45% of the total scope for OSV-T246, including:
+I led a 4-member team on this project — scheduler design, diagnostic tooling, and testing were divided across members, and the final architecture and results were presented to faculty evaluators.
 
-- **System Call**: Complete implementation of `getsysinfo()` system call
-- **Partial MLFQ**: Data structures and queue logic for Multi-Level Feedback Queue scheduler
-- **Deadlock Detection**: Design stubs and placeholder functionality
+## What's inside
 
-## Features Implemented
+### MLFQ scheduling framework
+- Multi-level priority queues — `mlfq[NQUEUE]` (3 levels) with `enqueue()` / `dequeue()` operations
+- Live queue-state introspection from user space via the `mlfqstatus` command, backed by the `mlfqstatus` system call
 
-### 1. System Call: `getsysinfo()`
+### System calls
+- **`getsysinfo()`** (#22) — returns the number of running processes and total system uptime via `struct sysinfo`; exercised by the `sysinfotest` user program
+- **`mlfqstatus()`** — exposes current MLFQ queue occupancy
+- **`detect_deadlock()`** — lock-graph based detection, exercised by `dltest`
 
-- **Purpose**: Returns system information including number of running processes and total system uptime
-- **System Call Number**: 22
-- **Parameters**: Pointer to `sysinfo` structure
-- **Returns**: 0 on success, -1 on failure
+### Deadlock-detection framework
+- `struct lockgraph` for tracking lock dependencies with `detect_deadlock()` in the kernel
 
-#### Structure Definition
-```c
-struct sysinfo {
-    int nproc;    // Number of running processes
-    uint ticks;   // System uptime in ticks
-};
-```
+### Diagnostics
+- `mlfqstatus` — queue-state viewer
+- `sysinfotest` — system information tester
+- `dltest` — deadlock-detection tester
 
-### 2. Partial MLFQ Scheduler
+## Implementation notes
 
-- **Data Structures**: 
-  - `struct queue` with circular buffer implementation
-  - `mlfq[NQUEUE]` array for 3 priority levels
-- **Queue Operations**: `enqueue()`, `dequeue()`, `print_queues()`
-- **Current Status**: Data structures initialized, periodic queue state printing
-- **TODO**: Complete scheduling algorithm integration
+| File | Change |
+|---|---|
+| `proc.c` / `proc.h` | MLFQ queue structures (`mlfq[NQUEUE]`), `enqueue`/`dequeue`, queue-state printing |
+| `syscall.h` / `syscall.c` | New syscall numbers and table entries |
+| `sysproc.c` | `sys_getsysinfo()`, `sys_mlfqstatus()`, `sys_detect_deadlock()` implementations |
+| `user.h` / `usys.S` | User-space syscall declarations and stubs |
+| `Makefile` | New kernel object and user programs (`sysinfotest`, `mlfqstatus`, `dltest`) |
 
-### 3. Deadlock Detection (Stub)
+New user programs: `sysinfotest.c`, `mlfqstatus.c`, `dltest.c`, `deadlock.c`.
 
-- **Data Structure**: `struct lockgraph` for tracking lock dependencies
-- **Function**: `detect_deadlock()` - placeholder implementation
-- **Current Status**: Design framework in place
-- **TODO**: Implement DFS-based cycle detection algorithm
+> Note: the MLFQ queue framework is in place; the active scheduler path currently uses round-robin dispatch.
 
-## How to Build and Run
+## Build & run
 
 ### Prerequisites
-- Linux environment (WSL recommended for Windows)
-- GCC compiler
-- QEMU emulator
+- Linux environment (WSL recommended on Windows)
+- GCC
+- QEMU
 
-### Build Instructions
+### Build
 ```bash
 make
 ```
 
-### Run Instructions
+### Run
 ```bash
 make qemu
 ```
 
-## Test Commands
-
-### Test System Call
+### Debug
 ```bash
-$ sysinfotest
+make qemu-gdb
 ```
-Expected output: `Running processes: X, Uptime: Y ticks`
 
-### Test Deadlock Detection
+## Test commands
+
 ```bash
-$ dltest
+$ sysinfotest      # Running processes: X, Uptime: Y ticks
+$ mlfqstatus       # === MLFQ Status === (queue occupancy per level)
+$ dltest           # Runs deadlock detection
 ```
-Expected output: `Running deadlock detection (stub)... Deadlock detected: NO`
 
-### Test MLFQ (Visual)
-- MLFQ queue states are printed every 500 ticks
-- Look for "MLFQ State:" messages in the console
+## Tech stack
 
-## Implementation Details
-
-### Files Modified
-- `syscall.h` - Added SYS_getsysinfo definition
-- `syscall.c` - Added syscall table entry
-- `sysproc.c` - Implemented sys_getsysinfo() function
-- `usys.S` - Added SYSCALL(getsysinfo)
-- `user.h` - Added function prototype
-- `proc.h` - Added MLFQ queue structures
-- `proc.c` - Added MLFQ helper functions and scheduler placeholder
-- `defs.h` - Added deadlock detection declaration
-- `Makefile` - Added new programs and kernel object
-
-### Files Created
-- `sysinfotest.c` - User program to test getsysinfo()
-- `dltest.c` - User program to test deadlock detection
-- `deadlock.c` - Deadlock detection implementation
-- `README-OSV-T246.md` - This documentation
-
-## Project Progress
-
-- ✅ **System Call Implementation** (100% complete)
-- ⚙️ **MLFQ Scheduler** (45% complete - data structures and basic framework)
-- 🧩 **Deadlock Detection** (25% complete - design and stubs)
-
-## Next Steps
-
-1. **Complete MLFQ Scheduling**: Replace round-robin with MLFQ algorithm
-2. **Implement Deadlock Detection**: Add DFS-based cycle detection
-3. **Add Process Priority Management**: Implement priority boosting/demotion
-4. **Add Lock Dependency Tracking**: Monitor lock acquisition patterns
-
-## Notes
-
-- Current implementation maintains system stability
-- MLFQ structures are initialized but not actively used for scheduling
-- Deadlock detection returns placeholder results
-- All existing functionality remains intact
-
-## Troubleshooting
-
-### Common Issues
-1. **Compilation Errors**: Ensure all files are properly saved
-2. **QEMU Not Found**: Install QEMU or set QEMU path in Makefile
-3. **Permission Issues**: Run with appropriate permissions
-
-### Debug Information
-- Use `make qemu-gdb` for debugging with GDB
-- Check console output for MLFQ state messages
-- Monitor system call execution with `sysinfotest`
+C · x86 assembly · QEMU · Make
